@@ -12,11 +12,17 @@ namespace treeTest
         private TreeNode rootTree;
         private String[] data;
         private List<List<String>> headers;
+        private List<String> dataType;
         private int nbData;
         private int nbHeader;
+        private int lastData;
 
-        
-        public TreeBuilder(String[] _data, List<List<String>> depthCorrepondance)
+
+        public TreeBuilder(String[] _data, List<List<String>> depthCorrepondance) : this(_data, depthCorrepondance, null)
+        {
+        }
+
+        public TreeBuilder(String[] _data, List<List<String>> depthCorrepondance, List<String> extraInfo)
         {
             // Create the tree
             rootTree = new TreeNode();
@@ -26,43 +32,60 @@ namespace treeTest
             // Setting counting elements to optimize the processing
             nbData = new List<String>(_data).Count;
             nbHeader = headers.Count;
+            dataType = extraInfo;
+
+            lastData = -1;
         }
 
         // Build the tree with these recursive function by deep way
-        private void TreeProcess(ref TreeNode node, int index, int depth)
+        private void TreeProcess(TreeNode node, int index, int depth)
         {
-            // Processing all the data
-            // Maybe we can optimize by adding static variable to avoid to repass by seen element
-            for (int i = index; i < nbData; i++)
+            // Exit condition
+            if (index <= lastData || index >= nbData)
+                return;
+
+            // If we find the a corresdance at the current level
+            if (depth < nbHeader && headers[depth].Contains(data[index]))
             {
-                // If we find the a corresdance at the current level
-                if (depth < nbHeader && headers[depth].Contains(data[i]))
+                // We create a new children
+                TreeNode children = AddChildren(node, data[index]);
+                lastData = index;
+                // Recursive call with the children
+                TreeProcess(children, index + 1, depth + 1);
+
+                // The new node can be at a depth upper
+                if (node.Parent != null)
+                    TreeProcess(node.Parent, index + 1, depth - 1);
+                //The new node can be at the same level
+                TreeProcess(node, index + 1, depth);
+            }
+            else
+            {
+                if (dataType.Contains(data[index]))
                 {
                     // We create a new children
-                    TreeNode children = new TreeNode();
-                    children.Text = data[i];
-                    // We linked it with it's parent
-                    node.Nodes.Add(children);
+                    TreeNode children = AddChildren(node, data[index]);
+                    lastData = index;
                     // Recursive call with the children
-                    TreeProcess(ref children, i + 1, depth + 1);
+                    TreeProcess(children, index + 1, depth + 1);
+
+                    // The new node can be at a depth upper
+                    if (node.Parent != null)
+                        TreeProcess(node.Parent, index + 1, depth - 1);
+                    //The new node can be at the same level
+                    TreeProcess(node, index + 1, depth);
                 }
                 else
-                {
-                    // If it has a parent 
+                    // Maybe the node is at an higher depth than before
                     if (node.Parent != null)
-                        for (int indexPrevDepth = 0; indexPrevDepth < depth; indexPrevDepth++)
-                        {
-                            if (headers[indexPrevDepth].Contains(data[i]))
-                            {
-                                // Go out of the recursive call (only the first level of the tree can have childrens)
-                                return;
-                            }
-                        }
-                }
+                    TreeProcess(node.Parent, index, depth - 1);
             }
         }
 
-        private void AddChildren(ref TreeNode node, String data, List<String> childrens, int nextDepth) {
+        private TreeNode AddChildren(TreeNode node, String data)
+        {
+            if (data == "")
+                return null;
             // We create a new children
             TreeNode newNode = new TreeNode();
             // We assigned it's data
@@ -70,14 +93,11 @@ namespace treeTest
             // We linked it with it's parent
             node.Nodes.Add(newNode);
 
-            // If the node have children 
-            if (childrens.Any())
-                // Do a recursive call
-                TreeProcess(ref newNode, childrens,nextDepth);
+            return newNode;
         }
 
         // Large processing
-        private void TreeProcess(ref TreeNode node, List<String> datas, int depth)
+        private void TreeProcess(TreeNode node, List<String> datas, int depth)
         {
             // Stock the data of the treeNode
             String prevData = "";
@@ -93,12 +113,17 @@ namespace treeTest
             foreach (String oneData in datas)
             {
                 // If we find a data at our current depth
-                if (depth < nbHeader && headers[depth].Contains(oneData))
+                if (headers[depth].Contains(oneData))
                 {
                     if (!first)
                     {
                         // We add it's data and it's children
-                        AddChildren(ref node, prevData, new List<String>(dataChildren), depth + 1);
+                        TreeNode childNodes = AddChildren(node, prevData);
+
+                        // If the node have children 
+                        if (dataChildren.Any())
+                            // Do a recursive call
+                            TreeProcess(childNodes, new List<String>(dataChildren), depth + 1);
                         // We clear the old children we get
                         dataChildren.Clear();
                     }
@@ -109,21 +134,42 @@ namespace treeTest
                 }
                 else
                 {
-                    // If the data is not at our level 
-                    // It is probably a children
-                    dataChildren.Add(oneData);
+                    if (dataType.Contains(oneData) && depth != 0)
+                    {
+                        // We add it's data and it's children
+                        TreeNode childNodes = AddChildren(node, prevData);
+
+                        // If the node have children 
+                        if (dataChildren.Any())
+                            // Do a recursive call
+                            TreeProcess(childNodes, new List<String>(dataChildren), depth + 1);
+                        // We clear the old children we get
+                        dataChildren.Clear();
+
+                        // We stock the data
+                        prevData = oneData;
+                        first = false;
+                    }
+                    else
+                        // If the data is not at our level 
+                        // It is probably a children
+                        dataChildren.Add(oneData);
                 }
             }
 
             // We need to add the last element (we skip the first one)
-            AddChildren(ref node, prevData, new List<String>(dataChildren), depth + 1);
+            TreeNode childNode = AddChildren(node, prevData);
+            // If the node have children 
+            if (dataChildren.Any())
+                // Do a recursive call
+                TreeProcess(childNode, new List<String>(dataChildren), depth + 1);
         }
 
         // If you have high deep this one is faster
         public TreeNode result()
         {
             // Call the recursive function with default arguments by deep way
-            TreeProcess(ref rootTree, 0, 0);
+            TreeProcess(rootTree, 0, 0);
             return rootTree;
         }
 
@@ -131,7 +177,7 @@ namespace treeTest
         public TreeNode resultLarge()
         {
             // Call the recursive function with default arguments by large way
-            TreeProcess(ref rootTree, data.ToList<String>(), 0);
+            TreeProcess(rootTree, data.ToList<String>(), 0);
             return rootTree;
         }
     }

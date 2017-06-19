@@ -16,7 +16,9 @@ namespace treeTest
         {
             InitializeComponent();
 
-            String[] testData = { "A", "B", "B", "C","D", "B1", "B2", "A", "B", "A" };
+            //String[] testData = { "A", "H","B", "B", "C","D","H","B1", "B2", "A", "B", "A" };
+            String[] testData = { "A", "H", "B", "B", "C", "D", "H","B1", "B2","H", "A", "B", "A", "H"};
+
             List<List<String>> testHeaders = new List<List<String>>();
             testHeaders.Add(new List<String>());
             testHeaders.Add(new List<String>());
@@ -29,7 +31,12 @@ namespace treeTest
             testHeaders[1].Add("B2");
             testHeaders[2].Add("C");
             testHeaders[3].Add("D");
-            foreach(TreeNode node in new TreeBuilder(testData, testHeaders).resultLarge().Nodes){
+
+            List<String> extraHeader = new List<String>();
+            extraHeader.Add("H");
+            extraHeader.Add("H2");
+
+            foreach (TreeNode node in new TreeBuilder(testData, testHeaders,extraHeader).resultLarge().Nodes){
                 treeView1.Nodes.Add(node);
             }
             //this.treeView1.Nodes.Add()
